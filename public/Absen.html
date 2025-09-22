@@ -1,47 +1,63 @@
-<script>
-  const WEB_APP_URL = "PASTE_URL_WEB_APP_DISINI"; // Ganti dengan URL Web App
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Absensi QR Code</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    #reader { width: 100%; max-width: 400px; margin: 20px auto; }
+    #status { margin-top: 15px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Absensi QR Code</h2>
+  <div id="reader"></div>
+  <p id="status">📷 Menunggu kamera...</p>
 
-  function startScanner(cameraId) {
-    const html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start(
-      cameraId,
-      {
-        fps: 10,
-        qrbox: 250
-      },
-      (decodedText, decodedResult) => {
-        document.getElementById("status").innerText = "ID Terdeteksi: " + decodedText + " | Mengirim...";
+  <script>
+    const WEB_APP_URL = "PASTE_URL_WEB_APP_DISINI"; // Ganti dgn Google Apps Script Web App
 
-        fetch(WEB_APP_URL, {
-          method: "POST",
-          body: JSON.stringify({ id: decodedText }),
-          headers: { "Content-Type": "application/json" }
-        })
-        .then(res => res.json())
-        .then(data => {
-          document.getElementById("status").innerText = "✅ Absensi berhasil: " + decodedText;
-          html5QrCode.stop();
-        })
-        .catch(err => {
-          document.getElementById("status").innerText = "❌ Gagal mencatat absensi";
-        });
-      },
-      (errorMessage) => {
-        console.log("Scan error: " + errorMessage);
-      }
-    );
-  }
+    function startScanner(cameraId) {
+      const qr = new Html5Qrcode("reader");
+      qr.start(
+        cameraId,
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          document.getElementById("status").innerText = "✅ Terdeteksi: " + decodedText;
 
-  // Cek daftar kamera
-  Html5Qrcode.getCameras().then(devices => {
-    if (devices && devices.length) {
-      // pilih kamera belakang kalau ada
-      let backCamera = devices.find(d => d.label.toLowerCase().includes('back')) || devices[0];
-      startScanner(backCamera.id);
-    } else {
-      document.getElementById("status").innerText = "❌ Kamera tidak ditemukan";
+          fetch(WEB_APP_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studentId: decodedText, token: "ABSEN2025-KEY" })
+          })
+          .then(r => r.json())
+          .then(res => {
+            if (res.success) {
+              document.getElementById("status").innerText = "✔ Absensi berhasil: " + decodedText;
+            } else {
+              document.getElementById("status").innerText = "⚠ Error: " + res.error;
+            }
+          })
+          .catch(err => {
+            document.getElementById("status").innerText = "❌ Gagal koneksi: " + err;
+          });
+
+          qr.stop();
+        },
+        (err) => { console.log("Scan error:", err); }
+      ).catch(err => {
+        document.getElementById("status").innerText = "❌ Tidak bisa mulai kamera: " + err;
+      });
     }
-  }).catch(err => {
-    document.getElementById("status").innerText = "❌ Error akses kamera: " + err;
-  });
-</script>
+
+    Html5Qrcode.getCameras().then(devices => {
+      if (devices && devices.length) {
+        let backCam = devices.find(d => d.label.toLowerCase().includes('back')) || devices[0];
+        startScanner(backCam.id);
+      } else {
+        document.getElementById("status").innerText = "❌ Kamera tidak ditemukan";
+      }
+    }).catch(err => {
+      document.getElementByI
