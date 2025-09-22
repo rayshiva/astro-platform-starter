@@ -2,69 +2,32 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Absensi QR Code</title>
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    #reader { width: 100%; max-width: 400px; margin: 20px auto; }
-    #status { margin-top: 15px; font-weight: bold; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
   <h2>Absensi QR Code</h2>
-  <div id="reader"></div>
-  <p id="status">📷 Menunggu kamera...</p>
+  <div id="reader" style="width:300px"></div>
+  <div id="result">📷 Menunggu kamera...</div>
 
-  <!-- Library html5-qrcode -->
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <!-- PENTING: load library dulu -->
+  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
 
   <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzwEWs1wxvbpe7G77fpan7kmr8YXUY16LwOGATdirQSkTz_B0dIuxZ9FCLPuUJqZDKJgg/exec";
-
-    function startScanner(cameraId) {
-      const qr = new Html5Qrcode("reader");
-      qr.start(
-        cameraId,
-        { fps: 10, qrbox: 250 },
-        (decodedText) => {
-          document.getElementById("status").innerText = "✅ Terdeteksi: " + decodedText;
-
-          fetch(WEB_APP_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ studentId: decodedText, token: "ABSEN2025-KEY" })
-          })
-          .then(r => r.json())
-          .then(res => {
-            if (res.success) {
-              document.getElementById("status").innerText = "✔ Absensi berhasil: " + decodedText;
-            } else {
-              document.getElementById("status").innerText = "⚠ Error: " + res.error;
-            }
-          })
-          .catch(err => {
-            document.getElementById("status").innerText = "❌ Gagal koneksi: " + err;
-          });
-
-          qr.stop();
-        },
-        (err) => { console.log("Scan error:", err); }
-      ).catch(err => {
-        document.getElementById("status").innerText = "❌ Tidak bisa mulai kamera: " + err;
-      });
+    // Jalankan scanner setelah library diload
+    function onScanSuccess(decodedText, decodedResult) {
+      document.getElementById("result").innerHTML = "✅ ID Terdeteksi: " + decodedText;
+      // TODO: kirim ke Google Apps Script / Spreadsheet
     }
 
-    Html5Qrcode.getCameras().then(devices => {
-      console.log("Daftar kamera:", devices);
-      if (devices && devices.length) {
-        let backCam = devices.find(d => d.label.toLowerCase().includes('back')) || devices[0];
-        startScanner(backCam.id);
-      } else {
-        document.getElementById("status").innerText = "❌ Kamera tidak ditemukan";
-      }
-    }).catch(err => {
-      document.getElementById("status").innerText = "❌ Error akses kamera: " + err;
-    });
+    function onScanFailure(error) {
+      // Bisa dibiarkan kosong, biar tidak spam error
+    }
+
+    // Panggil scanner
+    let html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
   </script>
 </body>
 </html>
