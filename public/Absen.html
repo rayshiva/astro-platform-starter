@@ -1,16 +1,16 @@
 <div id="absensi-container" style="max-width:600px; margin:20px auto; text-align:center; font-family:Arial;">
   <h3>📷 Absensi QR Code</h3>
   <div id="reader" style="width:100%; max-width:400px; margin:0 auto; border:1px solid #ccc; border-radius:8px;"></div>
-  <p id="scan-status" style="margin-top:10px; font-weight:bold; color:#555;">Status: Menunggu...</p>
+  <p id="scan-status" style="margin-top:10px; font-weight:bold; color:#555;">Status: Siap</p>
   <button id="start-btn" style="padding:8px 16px; margin:5px; border:none; border-radius:6px; background:#2d89ef; color:white; cursor:pointer;">▶ Mulai Scan</button>
   <button id="stop-btn" style="padding:8px 16px; margin:5px; border:none; border-radius:6px; background:#e81123; color:white; cursor:pointer;" disabled>⏹ Stop</button>
 </div>
 
 <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function(){
-  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzwEWs1wxvbpe7G77fpan7kmr8YXUY16LwOGATdirQSkTz_B0dIuxZ9FCLPuUJqZDKJgg/exec"; 
-  const SECRET_TOKEN = "ABSEN2025-KEY-9F7xQ!";
+(function(){
+  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzwEWs1wxvbpe7G77fpan7kmr8YXUY16LwOGATdirQSkTz_B0dIuxZ9FCLPuUJqZDKJgg/exec"; // URL Web App dari Google Apps Script
+  const SECRET_TOKEN = "ABSEN2025-KEY-9F7xQ!";  // Harus sama dengan di Apps Script
 
   const scanStatus = document.getElementById("scan-status");
   const startBtn = document.getElementById("start-btn");
@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
   function onScanSuccess(decodedText) {
     const now = Date.now();
-    if(decodedText === lastId && (now - lastTime < 3000)) return; 
+    if(decodedText === lastId && (now - lastTime < 3000)) return; // hindari duplikat cepat
     lastId = decodedText; lastTime = now;
     setStatus("Terdeteksi: " + decodedText, "#2d89ef");
     sendAbsensi(decodedText.trim());
@@ -55,15 +55,10 @@ document.addEventListener("DOMContentLoaded", function(){
       if(cams && cams.length){
         const camId = cams.find(c=>/back|rear|environment/i.test(c.label))?.id || cams[0].id;
         qrScanner = new Html5Qrcode("reader");
-        // Tambah delay kecil biar div siap
-        setTimeout(()=>{
-          qrScanner.start(camId, {fps:10, qrbox:250}, onScanSuccess)
-            .then(()=>{ 
-              setStatus("🔍 Kamera aktif, silakan scan QR", "#2d89ef");
-              startBtn.disabled = true; stopBtn.disabled = false;
-            })
-            .catch(err=> setStatus("Gagal mulai kamera: " + err, "red"));
-        }, 500);
+        qrScanner.start(camId, {fps:10, qrbox:250}, onScanSuccess);
+        setStatus("🔍 Kamera aktif, silakan scan QR", "#2d89ef");
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
       } else {
         setStatus("Kamera tidak ditemukan", "red");
       }
@@ -83,5 +78,6 @@ document.addEventListener("DOMContentLoaded", function(){
       });
     }
   };
-});
+})();
 </script>
+
