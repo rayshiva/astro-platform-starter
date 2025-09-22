@@ -1,55 +1,47 @@
-<div id="absensi-container" style="max-width:600px; margin:20px auto; text-align:center; font-family:Arial;">
-  <h3>Absensi QR Code</h3>
-  <div id="reader" style="width:100%; max-width:400px; margin:0 auto;"></div>
-  <p id="scan-status">Status: Siap</p>
-</div>
-
-<script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
 <script>
-(function(){
-  const WEBAPP_URL = "GANTI_DENGAN_URL_WEBAPP"; // dari deploy Apps Script
-  const SECRET_TOKEN = "ABSEN2025-KEY-9F7xQ!";  // sama dengan Apps Script
+  const WEB_APP_URL = "PASTE_URL_WEB_APP_DISINI"; // Ganti dengan URL Web App
 
-  const scanStatus = document.getElementById("scan-status");
-  let lastId = "", lastTime = 0;
+  function startScanner(cameraId) {
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      cameraId,
+      {
+        fps: 10,
+        qrbox: 250
+      },
+      (decodedText, decodedResult) => {
+        document.getElementById("status").innerText = "ID Terdeteksi: " + decodedText + " | Mengirim...";
 
-  function sendAbsensi(id){
-    fetch(WEBAPP_URL, {
-      method:"POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ token: SECRET_TOKEN, studentId: id })
-    })
-    .then(r=>r.json())
-    .then(res=>{
-      if(res.success){
-        scanStatus.innerText = "✔ Tercatat: " + id;
-      } else {
-        scanStatus.innerText = "⚠ " + res.error;
+        fetch(WEB_APP_URL, {
+          method: "POST",
+          body: JSON.stringify({ id: decodedText }),
+          headers: { "Content-Type": "application/json" }
+        })
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("status").innerText = "✅ Absensi berhasil: " + decodedText;
+          html5QrCode.stop();
+        })
+        .catch(err => {
+          document.getElementById("status").innerText = "❌ Gagal mencatat absensi";
+        });
+      },
+      (errorMessage) => {
+        console.log("Scan error: " + errorMessage);
       }
-    })
-    .catch(err=>{
-      scanStatus.innerText = "❌ Error: " + err;
-    });
+    );
   }
 
-  function onScanSuccess(decodedText) {
-    const now = Date.now();
-    if(decodedText === lastId && (now - lastTime < 3000)) return; // hindari duplikat cepat
-    lastId = decodedText; lastTime = now;
-    scanStatus.innerText = "Terdeteksi: " + decodedText;
-    sendAbsensi(decodedText.trim());
-  }
-
-  Html5Qrcode.getCameras().then(cams=>{
-    if(cams && cams.length){
-      const camId = cams.find(c=>/back|rear|environment/i.test(c.label))?.id || cams[0].id;
-      const qr = new Html5Qrcode("reader");
-      qr.start(camId, {fps:10, qrbox:250}, onScanSuccess);
+  // Cek daftar kamera
+  Html5Qrcode.getCameras().then(devices => {
+    if (devices && devices.length) {
+      // pilih kamera belakang kalau ada
+      let backCamera = devices.find(d => d.label.toLowerCase().includes('back')) || devices[0];
+      startScanner(backCamera.id);
     } else {
-      scanStatus.innerText = "Kamera tidak ditemukan";
+      document.getElementById("status").innerText = "❌ Kamera tidak ditemukan";
     }
-  }).catch(err=>{
-    scanStatus.innerText = "Gagal akses kamera: " + err;
+  }).catch(err => {
+    document.getElementById("status").innerText = "❌ Error akses kamera: " + err;
   });
-})();
 </script>
