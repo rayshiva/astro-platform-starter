@@ -1,17 +1,21 @@
 // === sw.js ===
-// Service Worker untuk Push Notification
-self.addEventListener("push", function(event) {
-  const data = event.data.json();
-  const title = data.title || "Notifikasi Tagihan";
-  const options = {
-    body: data.body || "Ada pembaruan data tagihan siswa.",
-    icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png",
-    badge: "https://cdn-icons-png.flaticon.com/512/190/190411.png"
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
+importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js");
+
+firebase.initializeApp({
+  apiKey: "AIzaSyD5HxwbUekp9Zeu7Wwm6iWlIYXfeCddgLM",
+  authDomain: "mim2sirau-aa2d0.firebaseapp.com",
+  projectId: "mim2sirau-aa2d0",
+  messagingSenderId: "914997621115",
+  appId: "1:914997621115:web:a76e5078c97b7e898a4dde"
 });
 
-self.addEventListener("notificationclick", function(event) {
-  event.notification.close();
-  event.waitUntil(clients.openWindow("https://kelas4.mimduasirau.sch.id/p/tes-firebase-tagihan.html"));
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage(function(payload) {
+  console.log('📩 Pesan background diterima:', payload);
+  self.registration.showNotification(payload.notification.title, {
+    body: payload.notification.body,
+    icon: '/icon.png'
+  });
 });
