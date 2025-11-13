@@ -1,6 +1,7 @@
 // === sw.js ===
-importScripts("https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.7.2/firebase-messaging-compat.js");
+// Update ke versi terbaru
+importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js");
 
 // Inisialisasi Firebase dengan konfigurasi yang sama dengan aplikasi utama
 firebase.initializeApp({
@@ -27,7 +28,18 @@ messaging.onBackgroundMessage(function(payload) {
     tag: 'tagihan-notification',
     renotify: true,
     requireInteraction: true,
-    data: payload.data
+    data: payload.data,
+    // Tambahkan actions untuk notifikasi
+    actions: [
+      {
+        action: 'view',
+        title: 'Lihat Detail'
+      },
+      {
+        action: 'close',
+        title: 'Tutup'
+      }
+    ]
   };
   
   return self.registration.showNotification(notificationTitle, notificationOptions);
@@ -38,20 +50,24 @@ self.addEventListener('notificationclick', function(event) {
   console.log('Notifikasi diklik:', event);
   event.notification.close();
   
-  // Buka atau fokus ke aplikasi
-  event.waitUntil(
-    clients.matchAll({type: 'window'}).then(function(clientList) {
-      for (var i = 0; i < clientList.length; i++) {
-        var client = clientList[i];
-        if (client.url === '/' && 'focus' in client) {
-          return client.focus();
+  // Periksa action yang diklik
+  if (event.action === 'view') {
+    // Buka atau fokus ke aplikasi
+    event.waitUntil(
+      clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(clientList) {
+        for (var i = 0; i < clientList.length; i++) {
+          var client = clientList[i];
+          if ('focus' in client) {
+            return client.focus();
+          }
         }
-      }
-      if (clients.openWindow) {
-        return clients.openWindow('/');
-      }
-    })
-  );
+        if (clients.openWindow) {
+          return clients.openWindow('/');
+        }
+      })
+    );
+  }
+  // Jika action 'close' atau tidak ada action, tidak perlu melakukan apa-apa
 });
 
 // Tangani event push
@@ -60,15 +76,26 @@ self.addEventListener('push', function(event) {
   
   if (event.data) {
     const data = event.data.json();
-    const title = data.title || 'Notifikasi Tagihan';
+    const title = data.notification?.title || data.title || 'Notifikasi Tagihan';
     const options = {
-      body: data.body || 'Ada pembaruan tagihan untuk Anda',
-      icon: data.icon || '/icon-192x192.png',
+      body: data.notification?.body || data.body || 'Ada pembaruan tagihan untuk Anda',
+      icon: data.notification?.icon || data.icon || '/icon-192x192.png',
       badge: '/badge-72x72.png',
       tag: 'tagihan-push',
       renotify: true,
       requireInteraction: true,
-      data: data.data || {}
+      data: data.data || {},
+      // Tambahkan actions untuk notifikasi
+      actions: [
+        {
+          action: 'view',
+          title: 'Lihat Detail'
+        },
+        {
+          action: 'close',
+          title: 'Tutup'
+        }
+      ]
     };
     
     event.waitUntil(
@@ -98,4 +125,26 @@ messaging.onTokenRefresh(function() {
       return response.text();
     })
     .then(function(responseText) {
-      console.log
+      console.log('✅ Token diperbarui di server:', responseText);
+    })
+    .catch(function(err) {
+      console.log('❌ Gagal memperbarui token di server:', err);
+    });
+});
+
+// Tangani sinkronisasi background (opsional)
+self.addEventListener('sync', function(event) {
+  if (event.tag === 'token-sync') {
+    console.log('Melakukan sinkronisasi token di background');
+    event.waitUntil(
+      // Lakukan sinkronisasi token di sini
+      Promise.resolve()
+    );
+  }
+});
+
+// Tangani notifikasi close (opsional)
+self.addEventListener('notificationclose', function(event) {
+  console.log('Notifikasi ditutup:', event);
+  // Lakukan tindakan setelah notifikasi ditutup
+});
