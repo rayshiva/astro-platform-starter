@@ -1,21 +1,101 @@
 // === sw.js ===
-importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.7.2/firebase-messaging-compat.js");
 
+// Inisialisasi Firebase dengan konfigurasi yang sama dengan aplikasi utama
 firebase.initializeApp({
   apiKey: "AIzaSyD5HxwbUekp9Zeu7Wwm6iWlIYXfeCddgLM",
   authDomain: "mim2sirau-aa2d0.firebaseapp.com",
   projectId: "mim2sirau-aa2d0",
+  storageBucket: "mim2sirau-aa2d0.firebasestorage.app",
   messagingSenderId: "914997621115",
-  appId: "1:914997621115:web:a76e5078c97b7e898a4dde"
+  appId: "1:914997621115:web:a76e5078c97b7e898a4dde",
+  measurementId: "G-Q38J5XVZEJ"
 });
 
 const messaging = firebase.messaging();
 
+// Tangani pesan saat aplikasi di background
 messaging.onBackgroundMessage(function(payload) {
   console.log('📩 Pesan background diterima:', payload);
-  self.registration.showNotification(payload.notification.title, {
+  
+  const notificationTitle = payload.notification.title;
+  const notificationOptions = {
     body: payload.notification.body,
-    icon: '/icon.png'
-  });
+    icon: payload.notification.icon || '/icon-192x192.png',
+    badge: '/badge-72x72.png',
+    tag: 'tagihan-notification',
+    renotify: true,
+    requireInteraction: true,
+    data: payload.data
+  };
+  
+  return self.registration.showNotification(notificationTitle, notificationOptions);
 });
+
+// Tangani klik notifikasi
+self.addEventListener('notificationclick', function(event) {
+  console.log('Notifikasi diklik:', event);
+  event.notification.close();
+  
+  // Buka atau fokus ke aplikasi
+  event.waitUntil(
+    clients.matchAll({type: 'window'}).then(function(clientList) {
+      for (var i = 0; i < clientList.length; i++) {
+        var client = clientList[i];
+        if (client.url === '/' && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
+    })
+  );
+});
+
+// Tangani event push
+self.addEventListener('push', function(event) {
+  console.log('Push event diterima:', event);
+  
+  if (event.data) {
+    const data = event.data.json();
+    const title = data.title || 'Notifikasi Tagihan';
+    const options = {
+      body: data.body || 'Ada pembaruan tagihan untuk Anda',
+      icon: data.icon || '/icon-192x192.png',
+      badge: '/badge-72x72.png',
+      tag: 'tagihan-push',
+      renotify: true,
+      requireInteraction: true,
+      data: data.data || {}
+    };
+    
+    event.waitUntil(
+      self.registration.showNotification(title, options)
+    );
+  }
+});
+
+// Tangani refresh token
+messaging.onTokenRefresh(function() {
+  messaging.getToken()
+    .then(function(refreshedToken) {
+      console.log('Token FCM diperbarui di service worker:', refreshedToken);
+      
+      // Kirim token baru ke server
+      return fetch('https://script.google.com/macros/s/AKfycbxCAqkAMTPa4qnTOwO4nj761GUPzbU4Jm1AZEUmbcqaBNkIIF_OkjidtWInS014C2Ye0A/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          action: 'update_token',
+          token: refreshedToken,
+          waktu: new Date().toISOString()
+        })
+      });
+    })
+    .then(function(response) {
+      return response.text();
+    })
+    .then(function(responseText) {
+      console.log
